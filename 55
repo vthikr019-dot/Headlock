@@ -1,0 +1,286 @@
+-- ==========================================================
+-- BLACK HUB BY BLACK (ESP + วงกลม 360° + Silent Aim เช็คกำแพง)
+-- ==========================================================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+if PlayerGui:FindFirstChild("BlackHubScript") then 
+    PlayerGui.BlackHubScript:Destroy() 
+end
+
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+ScreenGui.Name = "BlackHubScript"
+ScreenGui.ResetOnSpawn = false
+
+-- ล็อคไอดีรูปภาพของคุณไว้ตามที่สั่ง (ห้ามเปลี่ยน)
+local customImageID = "rbxassetid://111693869489089" 
+
+local isEspEnabled = false       
+local isSilentAimEnabled = false    
+local fovRadius = 150 -- ขนาดวงกลมเริ่มต้น (ปรับได้)
+
+-- สร้างวงกลม 360 องศาบนหน้าจอ
+local FOVCircle = Instance.new("Frame", ScreenGui)
+FOVCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+FOVCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+FOVCircle.BackgroundTransparency = 1
+FOVCircle.Visible = false
+
+local CircleStroke = Instance.new("UIStroke", FOVCircle)
+CircleStroke.Color = Color3.fromRGB(255, 50, 50)
+CircleStroke.Thickness = 2
+Instance.new("UICorner", FOVCircle).CornerRadius = UDim.new(1, 0)
+
+-- หน้าต่างหลัก
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 220, 0, 255)
+Main.Position = UDim2.new(0.5, -110, 0.5, -127)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Main.Active = true 
+Main.Draggable = true
+Main.Visible = false 
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 6)
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = Color3.fromRGB(50, 50, 50)
+MainStroke.Thickness = 1.5
+
+-- ปุ่มลอย (รูปภาพที่ล็อคไว้)
+local FloatBtn = Instance.new("ImageButton", ScreenGui)
+FloatBtn.Size = UDim2.new(0, 50, 0, 50)
+FloatBtn.Position = UDim2.new(0, 20, 0, 100)
+FloatBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+FloatBtn.Image = customImageID
+FloatBtn.Visible = true 
+FloatBtn.Active = true
+FloatBtn.Draggable = true
+Instance.new("UICorner", FloatBtn).CornerRadius = UDim.new(1, 0)
+local FloatStroke = Instance.new("UIStroke", FloatBtn)
+FloatStroke.Color = Color3.fromRGB(150, 150, 150)
+FloatStroke.Thickness = 2
+
+-- หัวเมนู
+local Header = Instance.new("Frame", Main)
+Header.Size = UDim2.new(1, 0, 0, 24)
+Header.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 6)
+
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 8, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "BLACK HUB BY BLACK"
+Title.TextColor3 = Color3.fromRGB(240, 240, 240)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 9
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local DeleteBtn = Instance.new("TextButton", Header)
+DeleteBtn.Size = UDim2.new(0, 20, 0, 20) 
+DeleteBtn.Position = UDim2.new(1, -22, 0, 2)
+DeleteBtn.BackgroundTransparency = 1 
+DeleteBtn.Text = "×"
+DeleteBtn.TextColor3 = Color3.fromRGB(255, 100, 100) 
+DeleteBtn.Font = Enum.Font.GothamBold 
+DeleteBtn.TextSize = 14
+
+local MinimizeBtn = Instance.new("TextButton", Header)
+MinimizeBtn.Size = UDim2.new(0, 20, 0, 20) 
+MinimizeBtn.Position = UDim2.new(1, -44, 0, 2)
+MinimizeBtn.BackgroundTransparency = 1 
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.fromRGB(180, 180, 180) 
+MinimizeBtn.Font = Enum.Font.GothamBold 
+MinimizeBtn.TextSize = 14
+
+FloatBtn.MouseButton1Click:Connect(function() Main.Visible = true FloatBtn.Visible = false end)
+MinimizeBtn.MouseButton1Click:Connect(function() Main.Visible = false FloatBtn.Visible = true end)
+DeleteBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+
+-- ปุ่มฟังก์ชัน ESP มองทะลุ
+local EspToggle = Instance.new("TextButton", Main)
+EspToggle.Size = UDim2.new(1, -20, 0, 32)
+EspToggle.Position = UDim2.new(0, 10, 0, 35)
+EspToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+EspToggle.Text = "ESP (มองทะลุ): OFF"
+EspToggle.TextColor3 = Color3.fromRGB(180, 180, 180)
+EspToggle.Font = Enum.Font.GothamBold
+EspToggle.TextSize = 10
+Instance.new("UICorner", EspToggle).CornerRadius = UDim.new(0, 4)
+
+-- ปุ่มฟังก์ชัน Silent Aim (ยิงโดนในวง เช็คกำแพง)
+local SilentAimToggle = Instance.new("TextButton", Main)
+SilentAimToggle.Size = UDim2.new(1, -20, 0, 32)
+SilentAimToggle.Position = UDim2.new(0, 10, 0, 75)
+SilentAimToggle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+SilentAimToggle.Text = "ยิงโดนในวง (เช็คกำแพง): OFF"
+SilentAimToggle.TextColor3 = Color3.fromRGB(180, 180, 180)
+SilentAimToggle.Font = Enum.Font.GothamBold
+SilentAimToggle.TextSize = 10
+Instance.new("UICorner", SilentAimToggle).CornerRadius = UDim.new(0, 4)
+
+-- ข้อความแสดงขนาดวงกลมปัจจุบัน
+local SizeLabel = Instance.new("TextLabel", Main)
+SizeLabel.Size = UDim2.new(1, -20, 0, 20)
+SizeLabel.Position = UDim2.new(0, 10, 0, 115)
+SizeLabel.BackgroundTransparency = 1
+SizeLabel.Text = "ขนาดวงกลม FOV: " .. fovRadius
+SizeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+SizeLabel.Font = Enum.Font.GothamBold
+SizeLabel.TextSize = 10
+
+-- ปุ่มเพิ่มขนาด (+) และลดขนาด (-) วงกลม
+local MinusBtn = Instance.new("TextButton", Main)
+MinusBtn.Size = UDim2.new(0.5, -15, 0, 30)
+MinusBtn.Position = UDim2.new(0, 10, 0, 140)
+MinusBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MinusBtn.Text = "วงกลม (-)"
+MinusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinusBtn.Font = Enum.Font.GothamBold
+MinusBtn.TextSize = 10
+Instance.new("UICorner", MinusBtn).CornerRadius = UDim.new(0, 4)
+
+local PlusBtn = Instance.new("TextButton", Main)
+PlusBtn.Size = UDim2.new(0.5, -15, 0, 30)
+PlusBtn.Position = UDim2.new(0.5, 5, 0, 140)
+PlusBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+PlusBtn.Text = "วงกลม (+)"
+PlusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlusBtn.Font = Enum.Font.GothamBold
+PlusBtn.TextSize = 10
+Instance.new("UICorner", PlusBtn).CornerRadius = UDim.new(0, 4)
+
+-- ระบบเปิด/ปิด
+EspToggle.MouseButton1Click:Connect(function()
+    isEspEnabled = not isEspEnabled
+    EspToggle.Text = isEspEnabled and "ESP (มองทะลุ): ON" or "ESP (มองทะลุ): OFF"
+    EspToggle.TextColor3 = isEspEnabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 180, 180)
+end)
+
+SilentAimToggle.MouseButton1Click:Connect(function()
+    isSilentAimEnabled = not isSilentAimEnabled
+    SilentAimToggle.Text = isSilentAimEnabled and "ยิงโดนในวง (เช็คกำแพง): ON" or "ยิงโดนในวง (เช็คกำแพง): OFF"
+    SilentAimToggle.TextColor3 = isSilentAimEnabled and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(180, 180, 180)
+    FOVCircle.Visible = isSilentAimEnabled 
+end)
+
+MinusBtn.MouseButton1Click:Connect(function()
+    fovRadius = math.clamp(fovRadius - 20, 50, 400)
+    FOVCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+    SizeLabel.Text = "ขนาดวงกลม FOV: " .. fovRadius
+end)
+
+PlusBtn.MouseButton1Click:Connect(function()
+    fovRadius = math.clamp(fovRadius + 20, 50, 400)
+    FOVCircle.Size = UDim2.new(0, fovRadius * 2, 0, fovRadius * 2)
+    SizeLabel.Text = "ขนาดวงกลม FOV: " .. fovRadius
+end)
+
+-- ฟังก์ชันเช็คว่ามีกำแพงบังอยู่ระหว่างเรากับเป้าหมายหรือไม่ (Raycast)
+local function isVisible(targetPart)
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Head") then return false end
+    local origin = LocalPlayer.Character.Head.Position
+    local direction = targetPart.Position - origin
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    raycastParams.IgnoreWater = true
+    
+    local result = workspace:Raycast(origin, direction, raycastParams)
+    if result then
+        -- ถ้าชนชิ้นส่วนของเป้าหมาย ถือว่ามองเห็น (ไม่มีกำแพงบัง)
+        if result.Instance:IsDescendantOf(targetPart.Parent) then
+            return true
+        else
+            return false -- มีกำแพงหรือสิ่งกีดขวางบังอยู่
+        end
+    end
+    return true
+end
+
+-- ฟังก์ชันหาเป้าหมายในวงกลม FOV ที่ไม่มีกำแพงบัง
+local function getTargetInFOV()
+    local bestTarget = nil
+    local shortestDistance = fovRadius
+    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            local head = player.Character:FindFirstChild("Head")
+            
+            if humanoid and humanoid.Health > 0 and head then
+                -- เช็คว่าอยู่ในระยะมองเห็น (ไม่มีกำแพงบัง)
+                if isVisible(head) then
+                    local vector, onScreen = Camera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        local screenPos = Vector2.new(vector.X, vector.Y)
+                        local distance = (screenPos - screenCenter).Magnitude
+                        
+                        if distance < shortestDistance then
+                            shortestDistance = distance
+                            bestTarget = head
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return bestTarget
+end
+
+-- ระบบฮุครีโมทเพื่อเปลี่ยนทิศทางกระสุนอัตโนมัติเฉพาะในวงกลม
+local function setupSilentAim()
+    local rawMetamethod
+    rawMetamethod = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        if isSilentAimEnabled and (method == "FireServer" or method == "InvokeServer") then
+            local target = getTargetInFOV()
+            if target then
+                for i, v in ipairs(args) do
+                    if typeof(v) == "Vector3" then
+                        args[i] = target.Position
+                    elseif typeof(v) == "CFrame" then
+                        args[i] = CFrame.new(target.Position)
+                    end
+                end
+            end
+        end
+        return rawMetamethod(self, unpack(args))
+    end)
+end
+
+pcall(setupSilentAim)
+
+-- ลูปการทำงานระบบ ESP มองทะลุ
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                
+                if isEspEnabled then
+                    if not char:FindFirstChild("SafeESP") then
+                        local hl = Instance.new("Highlight", char)
+                        hl.Name = "SafeESP"
+                        hl.FillColor = Color3.fromRGB(40, 40, 40)
+                        hl.FillTransparency = 0.6
+                        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        hl.Adornee = char
+                    end
+                else
+                    if char:FindFirstChild("SafeESP") then 
+                        char.SafeESP:Destroy() 
+                    end
+                end
+
+            end
+        end
+    end
+end)
